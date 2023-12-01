@@ -1,10 +1,6 @@
 # seatools
 
 seatools 是一个在 seafile 中下载文件的程序
-## 环境准备
-```bash
-pip install seatools -U -i http://115.28.185.117:8181/repository/mypypi/simple --trusted-host 115.28.185.117:8181
-```
 
 ## 使用示例
 

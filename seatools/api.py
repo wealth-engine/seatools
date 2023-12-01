@@ -5,6 +5,7 @@ import requests
 from seatools.common import logger
 from seatools.common import judgment_login
 
+
 logger = logger()
 
 
@@ -37,6 +38,7 @@ class BaseAPI:
 
     def get(self, url):
         result = requests.get(url, headers=self.headers)
+        print(result)
         data = json.loads(result.text)
         return data
 
@@ -82,7 +84,10 @@ class RepoAPI(BaseAPI):
         data_list = self.get(url)
         if not data_list:
             raise Exception(f"{name} is not exist or you don't have access")
-        return data_list[0]
+        for data in data_list:
+            if data.get("name") == name:
+                return data
+            continue
 
     def get_repo_by_id(self, repo_id):
         url = f'{self.url}/repos/{repo_id}'
@@ -124,6 +129,7 @@ class FileAPI(RepoAPI):
 
         with open(f"{to_folder}/{file_name}", 'wb') as file_obj:
             file_obj.write(file.content)
+            file.close()
 
     def get_file_detail(self, repo_id, file_name):
         url = f'{self.url}/repos/{repo_id}/file/detail/?p={file_name}'
@@ -139,8 +145,11 @@ class FileAPI(RepoAPI):
             remote_file_mtime = self.get_file_detail(repo_id, file_name).get("mtime")
             local_file_path_mtime = os.path.getmtime(local_file_path)
             if remote_file_mtime <= local_file_path_mtime:
+                print(f"文件：{file_name} 已是最新文件")
                 return
-
+            print(f"正在更新 {file_name} 文件...")
+        else:
+            print(f"正在下载 {file_name} 文件...")
         self.get_file(repo_id, file_name, to_folder)
 
     def download_files(self, repo_name, to_folder):
@@ -171,6 +180,18 @@ class FileAPI(RepoAPI):
         logger.info(f"{folder} uploaded successfully")
         return upload_res
 
+    def upload_file_list(self, file_list, repo_id):
+        url = f'{self.url}/repos/{repo_id}/upload-link/?p=/'
+        upload_link = self.get(url)
+        files = [("parent_dir", "/"), ("replace", 1)]
+        for file_path in file_list:
+            if not os.path.exists(file_path):
+                raise Exception(f"{file_path} is not exist")
+            file_tuple = ("file", open(file_path, 'rb'))
+            files.append(file_tuple)
+        upload_res = self.post(upload_link, files=files)
+        return upload_res
+
     def delete_folder(self, repo_name):
         repo_list = self._get_repo_by_name(repo_name)
         if not repo_list:
@@ -181,3 +202,12 @@ class FileAPI(RepoAPI):
         logger.info(f"{repo_name} delete is success")
         return res
 
+    def delete_file(self, repo_name, file_name):
+        repo_list = self._get_repo_by_name(repo_name)
+        if not repo_list:
+            raise Exception(f"{repo_name} is not exists")
+        repo_id = repo_list[0].get("id")
+        del_url = f"{self.url}/repos/{repo_id}/file/?p=/{file_name}"
+        res = self.delete(del_url)
+        logger.info(f"{repo_name} {file_name} delete is success")
+        return res
