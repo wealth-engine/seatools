@@ -2,6 +2,8 @@ import os
 import json
 import requests
 
+from retry import retry
+
 from seatools.common import logger
 from seatools.common import judgment_login
 
@@ -37,12 +39,12 @@ class BaseAPI:
         return headers
 
     def get(self, url):
-        result = requests.get(url, headers=self.headers)
+        result = requests.get(url, headers=self.headers, timeout=10)
         data = json.loads(result.text)
         return data
 
     def post(self, url, **kwargs):
-        result = requests.post(url, headers=self.headers, **kwargs)
+        result = requests.post(url, headers=self.headers, timeout=10, **kwargs)
         try:
             data = json.loads(result.text)
         except Exception as e:
@@ -50,7 +52,7 @@ class BaseAPI:
         return data
 
     def delete(self, url, **kwargs):
-        result = requests.delete(url, headers=self.headers, **kwargs)
+        result = requests.delete(url, headers=self.headers, timeout=10, **kwargs)
         if result.status_code != 200:
             return False
         return result
@@ -135,6 +137,7 @@ class FileAPI(RepoAPI):
         detail_info = self.get(url)
         return detail_info
 
+    @retry(tries=5, delay=10)
     def download_file(self, repo_id, file_name, to_folder):
         """
         下载或者更新单个文件
