@@ -38,7 +38,6 @@ class BaseAPI:
 
     def get(self, url):
         result = requests.get(url, headers=self.headers)
-        print(result)
         data = json.loads(result.text)
         return data
 
